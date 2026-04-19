@@ -14,7 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -27,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +52,7 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
     }
     val uiState by viewModel.uiState.collectAsState()
     val snapshot by RideTrackingService.snapshot.collectAsState()
+    val hrmState by viewModel.hrmState.collectAsState()
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -61,11 +67,13 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
     val distanceMiles = snapshot.distanceMeters / 1609.344
     val elapsedHours = uiState.elapsedMillis / 3_600_000.0
     val averageSpeedMph = if (elapsedHours > 0.0) distanceMiles / elapsedHours else 0.0
+    val liveAvgHr = snapshot.averageHeartRate
+    val effectiveHr = if (liveAvgHr > 0) liveAvgHr else uiState.heartRateInput.toIntOrNull()
     val calories = estimateOutdoorCalories(
         weightPounds = uiState.weightInput.toDoubleOrNull() ?: 0.0,
         hours = elapsedHours,
         averageSpeedMph = averageSpeedMph,
-        averageHeartRate = uiState.heartRateInput.toIntOrNull(),
+        averageHeartRate = effectiveHr,
         age = uiState.ageInput.toIntOrNull(),
         sex = uiState.sex
     )
@@ -122,6 +130,28 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
                     textAlign = TextAlign.Center
                 )
             }
+        }
+
+        // Heart rate display
+        if (hrmState.connectionStatus == ConnectionStatus.Connected && hrmState.heartRate > 0) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(32.dp)
+                )
+                Text(
+                    text = stringResource(R.string.hrm_connected, hrmState.heartRate),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // Elapsed time - small, between calories and buttons

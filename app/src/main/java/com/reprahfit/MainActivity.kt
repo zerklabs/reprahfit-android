@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.reprahfit.workers.WeightRefreshWorker
+import java.util.concurrent.TimeUnit
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -46,6 +51,7 @@ private enum class Screen { Detailed, Simple, History, Settings }
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        scheduleWeightRefresh()
         setContent {
             ReprahfitTheme {
                 Surface(
@@ -177,5 +183,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun scheduleWeightRefresh() {
+        val request = PeriodicWorkRequestBuilder<WeightRefreshWorker>(6, TimeUnit.HOURS, 30, TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "weight_refresh",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
     }
 }

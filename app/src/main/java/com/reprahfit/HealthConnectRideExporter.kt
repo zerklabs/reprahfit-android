@@ -5,8 +5,10 @@ import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseRoute
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Device
@@ -15,6 +17,7 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Length
+import androidx.health.connect.client.units.Velocity
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -25,7 +28,10 @@ data class CompletedRide(
     val endEpochMillis: Long,
     val distanceMeters: Double,
     val calories: Int,
-    val averageHeartRate: Int = 0
+    val averageHeartRate: Int = 0,
+    val exerciseType: Int = ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+    val speedSamples: List<SpeedSample> = emptyList(),
+    val routePoints: List<RoutePoint> = emptyList()
 )
 
 class HealthConnectRideExporter(private val context: Context) {
@@ -33,7 +39,9 @@ class HealthConnectRideExporter(private val context: Context) {
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
-        HealthPermission.getWritePermission(HeartRateRecord::class)
+        HealthPermission.getWritePermission(HeartRateRecord::class),
+        HealthPermission.getWritePermission(SpeedRecord::class),
+        HealthPermission.PERMISSION_WRITE_EXERCISE_ROUTE
     )
     private val weightPermissions = setOf(
         HealthPermission.getReadPermission(WeightRecord::class)
@@ -66,6 +74,21 @@ class HealthConnectRideExporter(private val context: Context) {
         val endOffset = ZoneOffset.systemDefault().rules.getOffset(endTime)
         val metadata = Metadata.activelyRecorded(phoneDevice())
 
+        val exerciseRoute = if (ride.routePoints.size >= 2) {
+            ExerciseRoute(
+                ride.routePoints.map { point ->
+                    ExerciseRoute.Location(
+                        time = Instant.ofEpochMilli(point.timestampMillis),
+                        latitude = point.latitude,
+                        longitude = point.longitude,
+                        altitude = point.altitudeMeters?.let { Length.meters(it) }
+                    )
+                }
+            )
+        } else {
+            null
+        }
+
         val records = mutableListOf(
             ExerciseSessionRecord(
                 startTime = startTime,
@@ -73,12 +96,13 @@ class HealthConnectRideExporter(private val context: Context) {
                 endTime = endTime,
                 endZoneOffset = endOffset,
                 metadata = metadata,
-                exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+                exerciseType = ride.exerciseType,
                 title = context.getString(R.string.health_connect_session_title),
                 notes = context.getString(
                     R.string.health_connect_session_note,
                     "%.2f".format(ride.distanceMeters / 1609.344)
-                )
+                ),
+                exerciseRoute = exerciseRoute
             ),
             DistanceRecord(
                 startTime = startTime,
@@ -112,6 +136,24 @@ class HealthConnectRideExporter(private val context: Context) {
                             beatsPerMinute = ride.averageHeartRate.toLong()
                         )
                     )
+                )
+            )
+        }
+
+        if (ride.speedSamples.size >= 2) {
+            records.add(
+                SpeedRecord(
+                    startTime = startTime,
+                    startZoneOffset = startOffset,
+                    endTime = endTime,
+                    endZoneOffset = endOffset,
+                    metadata = metadata,
+                    samples = ride.speedSamples.map { sample ->
+                        SpeedRecord.Sample(
+                            time = Instant.ofEpochMilli(sample.timestampMillis),
+                            speed = Velocity.metersPerSecond(sample.speedMps)
+                        )
+                    }
                 )
             )
         }

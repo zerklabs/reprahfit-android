@@ -6,14 +6,19 @@ import android.os.SystemClock
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.BackoffPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.reprahfit.data.AppDatabase
 import com.reprahfit.data.RideEntity
+import com.reprahfit.workers.RideSyncWorker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 data class RideUiState(
     val isTracking: Boolean = false,
@@ -22,6 +27,7 @@ data class RideUiState(
     val ageInput: String = "",
     val heartRateInput: String = "",
     val sex: Sex? = null,
+    val exerciseType: ExerciseType = ExerciseType.BIKING,
     val healthSyncStatus: String? = null,
     val weightStatus: String? = null,
     val pendingRideSync: CompletedRide? = null
@@ -44,6 +50,14 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             hrmManager.state.value.connectionStatus == ConnectionStatus.Disconnected
         ) {
             hrmManager.connectToSaved()
+        }
+
+        if (healthExporter.availabilityStatus() == HealthConnectClient.SDK_AVAILABLE) {
+            viewModelScope.launch {
+                if (healthExporter.hasRequiredWeightPermissions()) {
+                    loadWeightFromHealthConnect()
+                }
+            }
         }
     }
 
@@ -76,7 +90,10 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             weightInput = prefs.getString("weight", "180") ?: "180",
             ageInput = prefs.getString("age", "") ?: "",
             heartRateInput = prefs.getString("heart_rate", "") ?: "",
-            sex = prefs.getString("sex", null)?.let { Sex.valueOf(it) }
+            sex = prefs.getString("sex", null)?.let { Sex.valueOf(it) },
+            exerciseType = prefs.getString("exercise_type", null)
+                ?.let { runCatching { ExerciseType.valueOf(it) }.getOrNull() }
+                ?: ExerciseType.BIKING
         )
     )
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
@@ -135,12 +152,16 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             sex = currentState.sex
         )
 
+        val samples = RideTrackingService.consumeAccumulatedSamples()
         val ride = CompletedRide(
             startEpochMillis = sessionStart,
             endEpochMillis = System.currentTimeMillis(),
             distanceMeters = snapshot.distanceMeters,
             calories = calories,
-            averageHeartRate = snapshot.averageHeartRate
+            averageHeartRate = snapshot.averageHeartRate,
+            exerciseType = currentState.exerciseType.healthConnectType,
+            speedSamples = samples?.speedSamples ?: emptyList(),
+            routePoints = samples?.routePoints ?: emptyList()
         )
 
         _uiState.value = currentState.copy(
@@ -156,19 +177,21 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            rideDao.insert(
+            val rideId = rideDao.insert(
                 RideEntity(
                     startTimeMillis = ride.startEpochMillis,
                     endTimeMillis = ride.endEpochMillis,
                     durationMillis = finalElapsedMillis,
                     distanceMeters = ride.distanceMeters,
                     averageSpeedMph = averageSpeedMph,
-                    calories = ride.calories
+                    calories = ride.calories,
+                    averageHeartRate = ride.averageHeartRate,
+                    exerciseType = ride.exerciseType,
+                    syncedToHealthConnect = false
                 )
             )
+            syncRide(ride, rideId)
         }
-
-        syncRide(ride)
     }
 
     fun resetRide() {
@@ -214,6 +237,11 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putString("sex", sex?.name).apply()
     }
 
+    fun updateExerciseType(type: ExerciseType) {
+        _uiState.value = _uiState.value.copy(exerciseType = type)
+        prefs.edit().putString("exercise_type", type.name).apply()
+    }
+
     fun updateHealthSyncStatus(status: String?) {
         _uiState.value = _uiState.value.copy(healthSyncStatus = status)
     }
@@ -224,10 +252,18 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     fun syncPendingRide() {
         val ride = _uiState.value.pendingRideSync ?: return
-        viewModelScope.launch {
-            runHealthSync(ride)
-        }
         _uiState.value = _uiState.value.copy(pendingRideSync = null)
+        viewModelScope.launch {
+            val unsyncedRides = rideDao.getUnsyncedRides()
+            val matchingEntity = unsyncedRides.firstOrNull {
+                it.startTimeMillis == ride.startEpochMillis
+            }
+            if (matchingEntity != null) {
+                runHealthSync(ride, matchingEntity.id)
+            } else {
+                runHealthSync(ride, -1L)
+            }
+        }
     }
 
     fun retryWeightLoad() {
@@ -272,33 +308,33 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun syncRide(ride: CompletedRide) {
-        viewModelScope.launch {
-            when (healthExporter.availabilityStatus()) {
-                HealthConnectClient.SDK_UNAVAILABLE -> {
-                    _uiState.value = _uiState.value.copy(
-                        healthSyncStatus = context.getString(R.string.health_connect_unavailable)
-                    )
-                }
-                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                    _uiState.value = _uiState.value.copy(
-                        healthSyncStatus = context.getString(R.string.health_connect_update_required)
-                    )
-                }
-                HealthConnectClient.SDK_AVAILABLE -> {
-                    if (healthExporter.hasRequiredRidePermissions()) {
-                        runHealthSync(ride)
-                    } else {
-                        _uiState.value = _uiState.value.copy(pendingRideSync = ride)
-                    }
+    private suspend fun syncRide(ride: CompletedRide, rideId: Long) {
+        when (healthExporter.availabilityStatus()) {
+            HealthConnectClient.SDK_UNAVAILABLE -> {
+                _uiState.value = _uiState.value.copy(
+                    healthSyncStatus = context.getString(R.string.health_connect_unavailable)
+                )
+                enqueueRideRetry()
+            }
+            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                _uiState.value = _uiState.value.copy(
+                    healthSyncStatus = context.getString(R.string.health_connect_update_required)
+                )
+            }
+            HealthConnectClient.SDK_AVAILABLE -> {
+                if (healthExporter.hasRequiredRidePermissions()) {
+                    runHealthSync(ride, rideId)
+                } else {
+                    _uiState.value = _uiState.value.copy(pendingRideSync = ride)
                 }
             }
         }
     }
 
-    private suspend fun runHealthSync(ride: CompletedRide) {
+    private suspend fun runHealthSync(ride: CompletedRide, rideId: Long) {
         try {
             healthExporter.exportRide(ride)
+            if (rideId > 0) rideDao.markSynced(rideId)
             _uiState.value = _uiState.value.copy(
                 healthSyncStatus = context.getString(R.string.health_connect_synced)
             )
@@ -307,7 +343,15 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
                 healthSyncStatus = error.message
                     ?: context.getString(R.string.health_connect_sync_failed)
             )
+            enqueueRideRetry()
         }
+    }
+
+    private fun enqueueRideRetry() {
+        val request = OneTimeWorkRequestBuilder<RideSyncWorker>()
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueue(request)
     }
 
     private suspend fun loadWeightFromHealthConnect() {

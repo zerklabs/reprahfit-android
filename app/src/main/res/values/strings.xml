@@ -71,4 +71,7 @@
     <string name="hrm_section_title">Heart rate monitor</string>
     <string name="drawer_settings_title">Settings</string>
     <string name="drawer_menu_description">Open menu</string>
+    <string name="exercise_type_label">Exercise type</string>
+    <string name="exercise_type_biking">Outdoor Biking</string>
+    <string name="exercise_type_stationary">Stationary</string>
 </resources>

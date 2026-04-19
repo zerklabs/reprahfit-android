@@ -67,6 +67,28 @@ fun SettingsScreen(
             singleLine = true
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.exercise_type_label),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ExerciseType.entries.forEach { type ->
+                FilterChip(
+                    selected = uiState.exerciseType == type,
+                    onClick = { viewModel.updateExerciseType(type) },
+                    label = { Text(stringResource(type.labelResId)) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         uiState.weightStatus?.let { status ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(

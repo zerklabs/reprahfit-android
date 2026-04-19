@@ -35,9 +35,12 @@ class RideTrackingService : Service() {
     private val hrmManager get() = HeartRateMonitorManager.getInstance(this)
     private var hrSampleSum = 0L
     private var hrSampleCount = 0
+    private val speedSamples = mutableListOf<SpeedSample>()
+    private val routePoints = mutableListOf<RoutePoint>()
 
     override fun onCreate() {
         super.onCreate()
+        runningInstance = this
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         createNotificationChannel()
     }
@@ -56,6 +59,7 @@ class RideTrackingService : Service() {
         stopTracking()
         _snapshot.value = RideSnapshot()
         _isRunning.value = false
+        runningInstance = null
         super.onDestroy()
     }
 
@@ -67,6 +71,9 @@ class RideTrackingService : Service() {
         lastAcceptedLocation = null
         hrSampleSum = 0L
         hrSampleCount = 0
+        speedSamples.clear()
+        routePoints.clear()
+        _accumulatedSamples = null
         _snapshot.value = RideSnapshot()
         _isRunning.value = true
 
@@ -108,6 +115,23 @@ class RideTrackingService : Service() {
                 if (segmentMeters in 1.0..250.0) {
                     totalDistanceMeters += segmentMeters
                 }
+            }
+
+            routePoints.add(
+                RoutePoint(
+                    timestampMillis = location.time,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    altitudeMeters = if (location.hasAltitude()) location.altitude else null
+                )
+            )
+            if (calculatedSpeed >= MIN_SPEED_MPS) {
+                speedSamples.add(
+                    SpeedSample(
+                        timestampMillis = location.time,
+                        speedMps = calculatedSpeed
+                    )
+                )
             }
 
             lastAcceptedLocation = location
@@ -180,6 +204,14 @@ class RideTrackingService : Service() {
             .build()
     }
 
+    private fun captureAndStop() {
+        _accumulatedSamples = RideSamples(
+            speedSamples = speedSamples.toList(),
+            routePoints = routePoints.toList()
+        )
+        stopTracking()
+    }
+
     companion object {
         private const val TAG = "RideTrackingService"
         private const val CHANNEL_ID = "ride_tracking"
@@ -196,6 +228,15 @@ class RideTrackingService : Service() {
         private val _isRunning = MutableStateFlow(false)
         val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
+        private var runningInstance: RideTrackingService? = null
+        private var _accumulatedSamples: RideSamples? = null
+
+        fun consumeAccumulatedSamples(): RideSamples? {
+            val samples = _accumulatedSamples
+            _accumulatedSamples = null
+            return samples
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, RideTrackingService::class.java).apply {
                 action = ACTION_START
@@ -204,6 +245,7 @@ class RideTrackingService : Service() {
         }
 
         fun stop(context: Context) {
+            runningInstance?.captureAndStop()
             val intent = Intent(context, RideTrackingService::class.java).apply {
                 action = ACTION_STOP
             }

@@ -15,4 +15,10 @@ interface RideDao {
 
     @Query("DELETE FROM rides WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT * FROM rides WHERE syncedToHealthConnect = 0")
+    suspend fun getUnsyncedRides(): List<RideEntity>
+
+    @Query("UPDATE rides SET syncedToHealthConnect = 1 WHERE id = :id")
+    suspend fun markSynced(id: Long)
 }

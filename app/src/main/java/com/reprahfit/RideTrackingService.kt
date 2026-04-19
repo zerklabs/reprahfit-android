@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -187,8 +187,8 @@ class RideTrackingService : Service() {
         private const val MAX_ACCURACY_METERS = 30f
         private const val MIN_SPEED_MPS = 0.5 // ~1.1 mph
 
-        const val ACTION_START = "com.lowrider.fit.ACTION_START_TRACKING"
-        const val ACTION_STOP = "com.lowrider.fit.ACTION_STOP_TRACKING"
+        const val ACTION_START = "com.reprahfit.ACTION_START_TRACKING"
+        const val ACTION_STOP = "com.reprahfit.ACTION_STOP_TRACKING"
 
         private val _snapshot = MutableStateFlow(RideSnapshot())
         val snapshot: StateFlow<RideSnapshot> = _snapshot.asStateFlow()

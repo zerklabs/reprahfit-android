@@ -1,4 +1,4 @@
-package com.lowrider.fit.data
+package com.reprahfit.data
 
 import android.content.Context
 import androidx.room.Database
@@ -18,7 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "lowrider_fit.db"
+                    "reprahfit.db"
                 ).build().also { instance = it }
             }
         }

@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.Manifest
 import android.Manifest.permission.BLUETOOTH_CONNECT

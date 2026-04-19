@@ -1,12 +1,12 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.app.Application
 import android.os.SystemClock
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.lowrider.fit.data.AppDatabase
-import com.lowrider.fit.data.RideEntity
+import com.reprahfit.data.AppDatabase
+import com.reprahfit.data.RideEntity
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

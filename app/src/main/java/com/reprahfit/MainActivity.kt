@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,7 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.lowrider.fit.ui.theme.LowriderFitTheme
+import com.reprahfit.ui.theme.ReprahfitTheme
 
 private enum class Screen { Detailed, Simple, History }
 
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            LowriderFitTheme {
+            ReprahfitTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

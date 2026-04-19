@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.lowrider.fit.data.RideEntity
+import com.reprahfit.data.RideEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

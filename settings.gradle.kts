@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Lowrider Fit"
+rootProject.name = "reprahfit"
 include(":app")
 

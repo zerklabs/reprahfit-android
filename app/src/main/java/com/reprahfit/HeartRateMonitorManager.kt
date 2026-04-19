@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter

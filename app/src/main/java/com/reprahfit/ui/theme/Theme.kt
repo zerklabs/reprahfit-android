@@ -1,4 +1,4 @@
-package com.lowrider.fit.ui.theme
+package com.reprahfit.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +30,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun LowriderFitTheme(content: @Composable () -> Unit) {
+fun ReprahfitTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
         content = content

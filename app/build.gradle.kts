@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.lowrider.fit"
+    namespace = "com.reprahfit"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.lowrider.fit"
+        applicationId = "com.reprahfit"
         minSdk = 34
         targetSdk = 36
         versionCode = 1

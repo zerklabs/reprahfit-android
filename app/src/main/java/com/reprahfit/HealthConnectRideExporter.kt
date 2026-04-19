@@ -1,4 +1,4 @@
-package com.lowrider.fit
+package com.reprahfit
 
 import android.content.Context
 import android.os.Build

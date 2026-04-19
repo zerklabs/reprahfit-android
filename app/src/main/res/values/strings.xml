@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Lowrider Fit</string>
+    <string name="app_name">reprahfit</string>
     <string name="home_title">Outdoor Recumbent Ride</string>
     <string name="home_subtitle">Use phone GPS to track real ride speed and distance, then estimate calorie burn from your outdoor cycling pace.</string>
     <string name="status_title">Live ride stats</string>
@@ -33,7 +33,7 @@
     <string name="reset_ride_cta">Reset</string>
     <string name="results_note">Calorie burn is estimated from body weight, elapsed time, and average cycling speed bands, with a 15% reduction for recumbent riding efficiency. Connect a Bluetooth heart rate monitor for more accurate calorie estimates using the Keytel formula.</string>
     <string name="health_connect_session_title">Outdoor recumbent ride</string>
-    <string name="health_connect_session_note">Saved from Lowrider Fit. Distance: %1$s mi.</string>
+    <string name="health_connect_session_note">Saved from reprahfit. Distance: %1$s mi.</string>
     <string name="health_connect_no_ride">Ride was too short to sync.</string>
     <string name="health_connect_unavailable">Health Connect is not available on this device.</string>
     <string name="health_connect_update_required">Install or update Health Connect, then stop the ride again to sync.</string>

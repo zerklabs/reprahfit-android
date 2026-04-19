@@ -36,6 +36,14 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     val hrmState: StateFlow<HrmState> get() = hrmManager.state
 
+    init {
+        if (hrmManager.hasSavedDevice() && hrmManager.isBluetoothEnabled() &&
+            hrmManager.state.value.connectionStatus == ConnectionStatus.Disconnected
+        ) {
+            hrmManager.connectToSaved()
+        }
+    }
+
     fun startHrmScan() {
         hrmManager.startScan()
     }

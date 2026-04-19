@@ -1,7 +1,10 @@
 package com.reprahfit
 
 import android.Manifest
+import android.Manifest.permission.BLUETOOTH_CONNECT
+import android.Manifest.permission.BLUETOOTH_SCAN
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,12 +36,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -53,6 +59,24 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val snapshot by RideTrackingService.snapshot.collectAsState()
     val hrmState by viewModel.hrmState.collectAsState()
+
+    var hasBlePermission by rememberSaveable {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, BLUETOOTH_SCAN) ==
+                PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val blePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasBlePermission = permissions.values.all { it }
+        if (hasBlePermission) {
+            viewModel.startHrmScan()
+        }
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -132,33 +156,86 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
             }
         }
 
-        // Heart rate display
-        if (hrmState.connectionStatus == ConnectionStatus.Connected && hrmState.heartRate > 0) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Favorite,
-                    contentDescription = null,
-                    tint = Color.Red,
-                    modifier = Modifier.size(32.dp)
-                )
-                Text(
-                    text = stringResource(R.string.hrm_connected, hrmState.heartRate),
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Red
-                )
+        // Heart rate monitor
+        when (hrmState.connectionStatus) {
+            ConnectionStatus.Connected -> {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = Color.Red,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Text(
+                        text = if (hrmState.heartRate > 0) {
+                            stringResource(R.string.hrm_connected, hrmState.heartRate)
+                        } else {
+                            hrmState.deviceName ?: ""
+                        },
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Red
+                    )
+                }
+                TextButton(onClick = { viewModel.disconnectHrm() }) {
+                    Text(text = stringResource(R.string.hrm_disconnect_cta))
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-        } else if (hrmState.connectionStatus == ConnectionStatus.Reconnecting) {
-            Text(
-                text = stringResource(R.string.hrm_lost),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            ConnectionStatus.Reconnecting -> {
+                Text(
+                    text = stringResource(R.string.hrm_lost),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            ConnectionStatus.Connecting -> {
+                Text(
+                    text = stringResource(
+                        R.string.hrm_connecting,
+                        hrmState.deviceName ?: ""
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            ConnectionStatus.Scanning -> {
+                Text(
+                    text = stringResource(R.string.hrm_scanning),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = { viewModel.stopHrmScan() }) {
+                    Text(text = stringResource(R.string.hrm_stop_scan_cta))
+                }
+            }
+            ConnectionStatus.Disconnected -> {
+                TextButton(
+                    onClick = {
+                        if (!hasBlePermission) {
+                            blePermissionLauncher.launch(
+                                arrayOf(BLUETOOTH_SCAN, BLUETOOTH_CONNECT)
+                            )
+                        } else {
+                            viewModel.startHrmScan()
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.FavoriteBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.hrm_connect_cta),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
         }
 
         // Elapsed time - small, between calories and buttons

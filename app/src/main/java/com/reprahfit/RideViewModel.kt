@@ -1,6 +1,7 @@
 package com.reprahfit
 
 import android.app.Application
+import android.content.Context
 import android.os.SystemClock
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.AndroidViewModel
@@ -31,6 +32,8 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     val healthExporter = HealthConnectRideExporter(context)
     private val rideDao = AppDatabase.getInstance(context).rideDao()
     val rideHistory = rideDao.getAll()
+
+    private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     private val hrmManager get() = HeartRateMonitorManager.getInstance(context)
 
@@ -68,7 +71,14 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         return hrmManager.hasSavedDevice()
     }
 
-    private val _uiState = MutableStateFlow(RideUiState())
+    private val _uiState = MutableStateFlow(
+        RideUiState(
+            weightInput = prefs.getString("weight", "180") ?: "180",
+            ageInput = prefs.getString("age", "") ?: "",
+            heartRateInput = prefs.getString("heart_rate", "") ?: "",
+            sex = prefs.getString("sex", null)?.let { Sex.valueOf(it) }
+        )
+    )
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
 
     private var rideStartRealtime: Long? = null
@@ -183,21 +193,25 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         val filtered = value.filter { it.isDigit() || it == '.' }
         if (filtered.count { it == '.' } <= 1) {
             _uiState.value = _uiState.value.copy(weightInput = filtered)
+            prefs.edit().putString("weight", filtered).apply()
         }
     }
 
     fun updateAge(value: String) {
         val filtered = value.filter { it.isDigit() }
         _uiState.value = _uiState.value.copy(ageInput = filtered)
+        prefs.edit().putString("age", filtered).apply()
     }
 
     fun updateHeartRate(value: String) {
         val filtered = value.filter { it.isDigit() }
         _uiState.value = _uiState.value.copy(heartRateInput = filtered)
+        prefs.edit().putString("heart_rate", filtered).apply()
     }
 
     fun updateSex(sex: Sex?) {
         _uiState.value = _uiState.value.copy(sex = sex)
+        prefs.edit().putString("sex", sex?.name).apply()
     }
 
     fun updateHealthSyncStatus(status: String?) {
@@ -299,8 +313,10 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun loadWeightFromHealthConnect() {
         val pounds = healthExporter.readLatestWeightPounds()
         if (pounds != null) {
+            val formatted = "%.1f".format(pounds)
+            prefs.edit().putString("weight", formatted).apply()
             _uiState.value = _uiState.value.copy(
-                weightInput = "%.1f".format(pounds),
+                weightInput = formatted,
                 weightStatus = context.getString(R.string.health_connect_weight_loaded)
             )
         } else {

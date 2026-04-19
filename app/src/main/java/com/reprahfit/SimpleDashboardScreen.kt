@@ -152,6 +152,13 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
+        } else if (hrmState.connectionStatus == ConnectionStatus.Reconnecting) {
+            Text(
+                text = stringResource(R.string.hrm_lost),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // Elapsed time - small, between calories and buttons

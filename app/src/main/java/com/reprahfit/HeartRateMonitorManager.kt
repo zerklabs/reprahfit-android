@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-enum class ConnectionStatus { Disconnected, Scanning, Connecting, Connected }
+enum class ConnectionStatus { Disconnected, Scanning, Connecting, Connected, Reconnecting }
 
 data class HrmState(
     val connectionStatus: ConnectionStatus = ConnectionStatus.Disconnected,
@@ -51,6 +51,7 @@ class HeartRateMonitorManager(private val context: Context) {
     private var scanner: BluetoothLeScanner? = null
     private var gatt: BluetoothGatt? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var scanTimeoutRunnable: Runnable? = null
 
     private var reconnectAttempts = 0
     private var shouldReconnect = false
@@ -109,11 +110,19 @@ class HeartRateMonitorManager(private val context: Context) {
         scanner?.startScan(listOf(filter), settings, scanCallback)
         Log.d(TAG, "BLE scan started")
 
-        handler.postDelayed({ stopScan() }, SCAN_TIMEOUT_MS)
+        val timeout = Runnable { stopScan() }
+        scanTimeoutRunnable = timeout
+        handler.postDelayed(timeout, SCAN_TIMEOUT_MS)
     }
 
     fun stopScan() {
-        scanner?.stopScan(scanCallback)
+        scanTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        scanTimeoutRunnable = null
+        try {
+            scanner?.stopScan(scanCallback)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "stopScan failed (BT adapter may be off)", e)
+        }
         scanner = null
         if (_state.value.connectionStatus == ConnectionStatus.Scanning) {
             _state.value = _state.value.copy(connectionStatus = ConnectionStatus.Disconnected)
@@ -140,6 +149,12 @@ class HeartRateMonitorManager(private val context: Context) {
     }
 
     fun connectToSaved() {
+        reconnectAttempts = 0
+        shouldReconnect = true
+        internalConnectToSaved(ConnectionStatus.Connecting)
+    }
+
+    private fun internalConnectToSaved(status: ConnectionStatus) {
         val address = prefs.getString(KEY_DEVICE_ADDRESS, null) ?: return
         val adapter = bluetoothAdapter ?: return
         if (!adapter.isEnabled) return
@@ -148,17 +163,14 @@ class HeartRateMonitorManager(private val context: Context) {
         val name = prefs.getString(KEY_DEVICE_NAME, null)
             ?: context.getString(R.string.hrm_unknown_device)
 
-        reconnectAttempts = 0
-        shouldReconnect = true
-
         _state.value = HrmState(
-            connectionStatus = ConnectionStatus.Connecting,
+            connectionStatus = status,
             deviceName = name
         )
 
         gatt?.close()
         gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
-        Log.d(TAG, "Reconnecting to saved device $address")
+        Log.d(TAG, "Connecting to saved device $address (status=$status)")
     }
 
     fun disconnect() {
@@ -199,7 +211,7 @@ class HeartRateMonitorManager(private val context: Context) {
         val delayMs = 1000L * (1L shl (reconnectAttempts - 1)) // 1s, 2s, 4s
         Log.d(TAG, "Reconnect attempt $reconnectAttempts in ${delayMs}ms")
 
-        handler.postDelayed({ connectToSaved() }, delayMs)
+        handler.postDelayed({ internalConnectToSaved(ConnectionStatus.Reconnecting) }, delayMs)
     }
 
     private val scanCallback = object : ScanCallback() {
@@ -238,17 +250,19 @@ class HeartRateMonitorManager(private val context: Context) {
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(TAG, "GATT disconnected, status=$status")
-                    gatt.close()
-                    this@HeartRateMonitorManager.gatt = null
+                    handler.post {
+                        gatt.close()
+                        this@HeartRateMonitorManager.gatt = null
 
-                    if (shouldReconnect) {
-                        _state.value = _state.value.copy(
-                            connectionStatus = ConnectionStatus.Connecting,
-                            heartRate = 0
-                        )
-                        handler.post { attemptReconnect() }
-                    } else {
-                        _state.value = HrmState(connectionStatus = ConnectionStatus.Disconnected)
+                        if (shouldReconnect) {
+                            _state.value = _state.value.copy(
+                                connectionStatus = ConnectionStatus.Reconnecting,
+                                heartRate = 0
+                            )
+                            attemptReconnect()
+                        } else {
+                            _state.value = HrmState(connectionStatus = ConnectionStatus.Disconnected)
+                        }
                     }
                 }
             }

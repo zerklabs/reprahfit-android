@@ -254,6 +254,13 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
                     Text(text = stringResource(R.string.hrm_disconnect_cta))
                 }
             }
+            ConnectionStatus.Reconnecting -> {
+                Text(
+                    text = stringResource(R.string.hrm_lost),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             ConnectionStatus.Connecting -> {
                 Text(
                     text = stringResource(

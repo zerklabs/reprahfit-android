@@ -1,11 +1,15 @@
 package com.lowrider.fit
 
 import android.Manifest
+import android.Manifest.permission.BLUETOOTH_CONNECT
+import android.Manifest.permission.BLUETOOTH_SCAN
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,16 +18,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,6 +68,27 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
     }
     val uiState by viewModel.uiState.collectAsState()
     val snapshot by RideTrackingService.snapshot.collectAsState()
+    val hrmState by viewModel.hrmState.collectAsState()
+    var showDevicePicker by rememberSaveable { mutableStateOf(false) }
+
+    var hasBlePermission by rememberSaveable {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, BLUETOOTH_SCAN) ==
+                PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val blePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasBlePermission = permissions.values.all { it }
+        if (hasBlePermission) {
+            viewModel.startHrmScan()
+            showDevicePicker = true
+        }
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -84,11 +119,13 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
     val distanceMiles = snapshot.distanceMeters / 1609.344
     val elapsedHours = uiState.elapsedMillis / 3_600_000.0
     val averageSpeedMph = if (elapsedHours > 0.0) distanceMiles / elapsedHours else 0.0
+    val liveAvgHr = snapshot.averageHeartRate
+    val effectiveHr = if (liveAvgHr > 0) liveAvgHr else uiState.heartRateInput.toIntOrNull()
     val calories = estimateOutdoorCalories(
         weightPounds = uiState.weightInput.toDoubleOrNull() ?: 0.0,
         hours = elapsedHours,
         averageSpeedMph = averageSpeedMph,
-        averageHeartRate = uiState.heartRateInput.toIntOrNull(),
+        averageHeartRate = effectiveHr,
         age = uiState.ageInput.toIntOrNull(),
         sex = uiState.sex
     )
@@ -153,6 +190,13 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
                     label = stringResource(R.string.calorie_result_label),
                     value = stringResource(R.string.calorie_result_value, calories)
                 )
+                if (hrmState.connectionStatus == ConnectionStatus.Connected && hrmState.heartRate > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    StatRow(
+                        label = stringResource(R.string.hrm_section_title),
+                        value = stringResource(R.string.hrm_connected, hrmState.heartRate)
+                    )
+                }
             }
         }
 
@@ -171,67 +215,167 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = stringResource(R.string.hr_section_title),
+            text = stringResource(R.string.hrm_section_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Text(
-            text = stringResource(R.string.hr_section_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedTextField(
-                value = uiState.ageInput,
-                onValueChange = { viewModel.updateAge(it) },
-                label = { Text(stringResource(R.string.age_label)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = uiState.heartRateInput,
-                onValueChange = { viewModel.updateHeartRate(it) },
-                label = { Text(stringResource(R.string.heart_rate_label)) },
-                supportingText = { Text(stringResource(R.string.heart_rate_supporting)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.sex_label),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.alignByBaseline()
-            )
-            FilterChip(
-                selected = uiState.sex == Sex.Male,
-                onClick = {
-                    viewModel.updateSex(if (uiState.sex == Sex.Male) null else Sex.Male)
-                },
-                label = { Text(stringResource(R.string.sex_male)) }
-            )
-            FilterChip(
-                selected = uiState.sex == Sex.Female,
-                onClick = {
-                    viewModel.updateSex(if (uiState.sex == Sex.Female) null else Sex.Female)
-                },
-                label = { Text(stringResource(R.string.sex_female)) }
-            )
+        when (hrmState.connectionStatus) {
+            ConnectionStatus.Connected -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = null,
+                            tint = Color.Red,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.hrm_connected, hrmState.heartRate),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Text(
+                        text = hrmState.deviceName ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = { viewModel.disconnectHrm() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.hrm_disconnect_cta))
+                }
+            }
+            ConnectionStatus.Connecting -> {
+                Text(
+                    text = stringResource(
+                        R.string.hrm_connecting,
+                        hrmState.deviceName ?: ""
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            ConnectionStatus.Scanning -> {
+                Text(
+                    text = stringResource(R.string.hrm_scanning),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        viewModel.stopHrmScan()
+                        showDevicePicker = false
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.hrm_stop_scan_cta))
+                }
+            }
+            ConnectionStatus.Disconnected -> {
+                OutlinedButton(
+                    onClick = {
+                        if (!hasBlePermission) {
+                            blePermissionLauncher.launch(
+                                arrayOf(BLUETOOTH_SCAN, BLUETOOTH_CONNECT)
+                            )
+                        } else {
+                            viewModel.startHrmScan()
+                            showDevicePicker = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.FavoriteBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.hrm_connect_cta),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+
+        // Manual HR section - only shown when HRM is NOT connected
+        AnimatedVisibility(visible = hrmState.connectionStatus != ConnectionStatus.Connected) {
+            Column {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.hr_section_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = stringResource(R.string.hr_section_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.ageInput,
+                        onValueChange = { viewModel.updateAge(it) },
+                        label = { Text(stringResource(R.string.age_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.heartRateInput,
+                        onValueChange = { viewModel.updateHeartRate(it) },
+                        label = { Text(stringResource(R.string.heart_rate_label)) },
+                        supportingText = { Text(stringResource(R.string.heart_rate_supporting)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.sex_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    FilterChip(
+                        selected = uiState.sex == Sex.Male,
+                        onClick = {
+                            viewModel.updateSex(if (uiState.sex == Sex.Male) null else Sex.Male)
+                        },
+                        label = { Text(stringResource(R.string.sex_male)) }
+                    )
+                    FilterChip(
+                        selected = uiState.sex == Sex.Female,
+                        onClick = {
+                            viewModel.updateSex(if (uiState.sex == Sex.Female) null else Sex.Female)
+                        },
+                        label = { Text(stringResource(R.string.sex_female)) }
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -336,6 +480,65 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+
+    if (showDevicePicker) {
+        @OptIn(ExperimentalMaterial3Api::class)
+        ModalBottomSheet(
+            onDismissRequest = {
+                showDevicePicker = false
+                viewModel.stopHrmScan()
+            },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.hrm_section_title),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (hrmState.scanResults.isEmpty()) {
+                    Text(
+                        text = if (hrmState.connectionStatus == ConnectionStatus.Scanning) {
+                            stringResource(R.string.hrm_scanning)
+                        } else {
+                            stringResource(R.string.hrm_no_devices)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 24.dp)
+                    )
+                }
+
+                hrmState.scanResults.forEach { result ->
+                    ListItem(
+                        headlineContent = { Text(result.name) },
+                        supportingContent = {
+                            Text("Signal: ${result.rssi} dBm")
+                        },
+                        modifier = Modifier.clickable {
+                            viewModel.connectHrmDevice(result.device)
+                            showDevicePicker = false
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        viewModel.stopHrmScan()
+                        showDevicePicker = false
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.hrm_stop_scan_cta))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
     }
 }
 

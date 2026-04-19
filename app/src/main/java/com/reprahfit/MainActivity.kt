@@ -240,7 +240,11 @@ class MainActivity : ComponentActivity() {
                             }
 
                             // Screen content
-                            Box(modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(bottom = 40.dp)
+                            ) {
                                 when (screen) {
                                     Screen.Detailed -> OutdoorRideScreen(viewModel)
                                     Screen.Simple -> SimpleDashboardScreen(viewModel)
@@ -263,7 +267,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier
                                         .align(Alignment.CenterHorizontally)
-                                        .padding(bottom = 8.dp)
                                 ) {
                                     Text(
                                         text = if (screen == Screen.Simple) {

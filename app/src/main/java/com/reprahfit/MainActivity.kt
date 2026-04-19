@@ -38,7 +38,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var screen by rememberSaveable { mutableStateOf(Screen.Detailed) }
 
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                    ) {
                         when (screen) {
                             Screen.Detailed -> OutdoorRideScreen()
                             Screen.Simple -> SimpleDashboardScreen()
@@ -51,7 +54,6 @@ class MainActivity : ComponentActivity() {
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .windowInsetsPadding(WindowInsets.statusBars)
                                     .padding(8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {

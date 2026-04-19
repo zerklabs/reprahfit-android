@@ -134,7 +134,7 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = 48.dp)
+            .padding(24.dp)
     ) {
         Text(
             text = stringResource(R.string.home_title),

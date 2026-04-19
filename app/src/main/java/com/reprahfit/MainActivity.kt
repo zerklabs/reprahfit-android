@@ -221,26 +221,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .windowInsetsPadding(WindowInsets.statusBars)
                         ) {
-                            when (screen) {
-                                Screen.Detailed -> OutdoorRideScreen(viewModel)
-                                Screen.Simple -> SimpleDashboardScreen(viewModel)
-                                Screen.History -> RideHistoryScreen(
-                                    onBack = { screen = Screen.Simple },
-                                    viewModel = viewModel
-                                )
-                            }
-
-                            // Menu icon top-left
+                            // Top bar with menu icon
                             IconButton(
                                 onClick = { scope.launch { drawerState.open() } },
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(4.dp)
+                                modifier = Modifier.padding(4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Menu,
@@ -248,6 +237,18 @@ class MainActivity : ComponentActivity() {
                                         R.string.drawer_menu_description
                                     )
                                 )
+                            }
+
+                            // Screen content
+                            Box(modifier = Modifier.weight(1f)) {
+                                when (screen) {
+                                    Screen.Detailed -> OutdoorRideScreen(viewModel)
+                                    Screen.Simple -> SimpleDashboardScreen(viewModel)
+                                    Screen.History -> RideHistoryScreen(
+                                        onBack = { screen = Screen.Simple },
+                                        viewModel = viewModel
+                                    )
+                                }
                             }
 
                             // Bottom view toggle
@@ -261,7 +262,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     modifier = Modifier
-                                        .align(Alignment.BottomCenter)
+                                        .align(Alignment.CenterHorizontally)
                                         .padding(bottom = 8.dp)
                                 ) {
                                     Text(

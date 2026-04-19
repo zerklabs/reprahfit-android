@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Pulse Line (Top) -->
+    <path
+        android:strokeColor="#00E676"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeAlpha="0.4"
+        android:pathData="M15,28 H30 L37,15 L47,40 L53,28 H93" />
+
+    <!-- Large Rear Wheel -->
+    <path
+        android:strokeColor="#00E676"
+        android:strokeWidth="4"
+        android:pathData="M 22,75 m -16,0 a 16,16 0 1,1 32,0 a 16,16 0 1,1 -32,0" />
+    
+    <!-- Small Front Wheel -->
+    <path
+        android:strokeColor="#00E676"
+        android:strokeWidth="3.5"
+        android:pathData="M 78,82 m -9,0 a 9,9 0 1,1 18,0 a 9,9 0 1,1 -18,0" />
+    
+    <!-- Low Racer Frame -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M22,75 L45,82 L95,82" />
+        
+    <!-- Seat Back (White) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M45,82 L32,50" />
+
+    <!-- Rider (Energetic Orange #FF6D00) - Shifted Forward -->
+    <!-- Head -->
+    <path
+        android:fillColor="#FF6D00"
+        android:pathData="M 46,40 m -4,0 a 4,4 0 1,1 8,0 a 4,4 0 1,1 -8,0" />
+    <!-- Torso (Shoulders to Hips) -->
+    <path
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M42,48 L55,78" />
+    <!-- Extended Leg -->
+    <path
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M55,78 L95,82" />
+    <!-- Bent Leg -->
+    <path
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M55,78 L75,65 L88,80" />
+    <!-- Arm -->
+    <path
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M48,62 L70,75" />
+</vector>

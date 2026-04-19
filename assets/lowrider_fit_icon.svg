@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded Background -->
+  <rect width="512" height="512" rx="114" fill="#121212"/>
+  
+  <!-- Pulse Line (Top) -->
+  <path d="M70 140H140L170 80L215 190L245 140H442" stroke="#00E676" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.4"/>
+  
+  <!-- Large Rear Wheel -->
+  <circle cx="100" cy="370" r="80" stroke="#00E676" stroke-width="20"/>
+  
+  <!-- Small Front Wheel -->
+  <circle cx="380" cy="400" r="50" stroke="#00E676" stroke-width="15"/>
+  
+  <!-- Low Racer Frame (White) -->
+  <path d="M100 370L220 400H450" stroke="white" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Deep Reclined Seat Back (White) -->
+  <path d="M220 400L160 220" stroke="white" stroke-width="35" stroke-linecap="round"/>
+
+  <!-- Stick Figure Rider (Energetic Orange #FF6D00) - Shifted Forward -->
+  <!-- Head -->
+  <circle cx="210" cy="180" r="25" fill="#FF6D00"/>
+  <!-- Torso (leaning forward from seat back) -->
+  <path d="M190 220L270 380" stroke="#FF6D00" stroke-width="20" stroke-linecap="round"/>
+  <!-- Extended Leg -->
+  <path d="M270 380L450 400" stroke="#FF6D00" stroke-width="20" stroke-linecap="round"/>
+  <!-- Bent Leg (Pedal Stroke) -->
+  <path d="M270 380L380 300L440 380" stroke="#FF6D00" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arm -->
+  <path d="M220 300L350 360" stroke="#FF6D00" stroke-width="15" stroke-linecap="round"/>
+</svg>

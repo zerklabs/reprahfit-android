@@ -68,6 +68,17 @@ class HeartRateMonitorManager(private val context: Context) {
         val HR_SERVICE_UUID: UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")
         val HR_MEASUREMENT_UUID: UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb")
         val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        @Volatile
+        private var instance: HeartRateMonitorManager? = null
+
+        fun getInstance(context: Context): HeartRateMonitorManager {
+            return instance ?: synchronized(this) {
+                instance ?: HeartRateMonitorManager(context.applicationContext).also {
+                    instance = it
+                }
+            }
+        }
     }
 
     fun hasSavedDevice(): Boolean = prefs.getString(KEY_DEVICE_ADDRESS, null) != null

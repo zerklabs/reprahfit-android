@@ -21,7 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 data class RideSnapshot(
     val hasFix: Boolean = false,
     val currentSpeedMps: Double = 0.0,
-    val distanceMeters: Double = 0.0
+    val distanceMeters: Double = 0.0,
+    val currentHeartRate: Int = 0,
+    val averageHeartRate: Int = 0
 )
 
 class RideTrackingService : Service() {
@@ -30,6 +32,9 @@ class RideTrackingService : Service() {
     private var locationListener: LocationListener? = null
     private var lastAcceptedLocation: Location? = null
     private var totalDistanceMeters = 0.0
+    private val hrmManager get() = HeartRateMonitorManager.getInstance(this)
+    private var hrSampleSum = 0L
+    private var hrSampleCount = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -60,8 +65,14 @@ class RideTrackingService : Service() {
 
         totalDistanceMeters = 0.0
         lastAcceptedLocation = null
+        hrSampleSum = 0L
+        hrSampleCount = 0
         _snapshot.value = RideSnapshot()
         _isRunning.value = true
+
+        if (hrmManager.hasSavedDevice() && hrmManager.isBluetoothEnabled()) {
+            hrmManager.connectToSaved()
+        }
 
         startForeground(
             NOTIFICATION_ID,
@@ -100,10 +111,20 @@ class RideTrackingService : Service() {
             }
 
             lastAcceptedLocation = location
+
+            val currentHr = hrmManager.state.value.heartRate
+            if (currentHr > 0) {
+                hrSampleSum += currentHr
+                hrSampleCount++
+            }
+            val avgHr = if (hrSampleCount > 0) (hrSampleSum / hrSampleCount).toInt() else 0
+
             _snapshot.value = RideSnapshot(
                 hasFix = true,
                 currentSpeedMps = calculatedSpeed,
-                distanceMeters = totalDistanceMeters
+                distanceMeters = totalDistanceMeters,
+                currentHeartRate = currentHr,
+                averageHeartRate = avgHr
             )
             Log.d(TAG, "Fix: speed=%.1f m/s, hasSpeed=%b, accuracy=%.0fm, distance=%.0fm".format(
                 calculatedSpeed, location.hasSpeed(), location.accuracy, totalDistanceMeters

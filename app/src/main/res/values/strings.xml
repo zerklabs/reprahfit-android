@@ -31,7 +31,7 @@
     <string name="start_ride_cta">Start Ride</string>
     <string name="stop_ride_cta">Stop Ride</string>
     <string name="reset_ride_cta">Reset</string>
-    <string name="results_note">Calorie burn is estimated from body weight, elapsed time, and average cycling speed bands, with a 15% reduction for recumbent riding efficiency. For better accuracy later, add heart-rate and wheel sensors.</string>
+    <string name="results_note">Calorie burn is estimated from body weight, elapsed time, and average cycling speed bands, with a 15% reduction for recumbent riding efficiency. Connect a Bluetooth heart rate monitor for more accurate calorie estimates using the Keytel formula.</string>
     <string name="health_connect_session_title">Outdoor recumbent ride</string>
     <string name="health_connect_session_note">Saved from Lowrider Fit. Distance: %1$s mi.</string>
     <string name="health_connect_no_ride">Ride was too short to sync.</string>
@@ -56,4 +56,17 @@
     <string name="history_cta">History</string>
     <string name="history_back_cta">Back</string>
     <string name="history_delete_cta">Delete</string>
+    <string name="hrm_connect_cta">Connect HRM</string>
+    <string name="hrm_scanning">Scanning\u2026</string>
+    <string name="hrm_connecting">Connecting to %1$s\u2026</string>
+    <string name="hrm_connected">%1$d bpm</string>
+    <string name="hrm_device_label">%1$s</string>
+    <string name="hrm_lost">HRM lost, reconnecting\u2026</string>
+    <string name="hrm_disconnect_cta">Disconnect HRM</string>
+    <string name="hrm_stop_scan_cta">Stop Scanning</string>
+    <string name="hrm_unknown_device">Unknown HRM</string>
+    <string name="hrm_no_devices">No heart rate monitors found.</string>
+    <string name="hrm_bluetooth_off">Turn on Bluetooth to connect a heart rate monitor.</string>
+    <string name="hrm_permission_needed">Bluetooth permission is required to connect a heart rate monitor.</string>
+    <string name="hrm_section_title">Heart rate monitor</string>
 </resources>

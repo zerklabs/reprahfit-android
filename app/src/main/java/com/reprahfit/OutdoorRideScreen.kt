@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -28,13 +26,11 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -48,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.PermissionController
@@ -61,7 +56,6 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     }
     val ridePermissions = remember { viewModel.healthExporter.requiredRidePermissions() }
-    val weightPermissions = remember { viewModel.healthExporter.requiredWeightPermissions() }
 
     var hasLocationPermission by rememberSaveable {
         mutableStateOf(context.hasFineLocationPermission())
@@ -105,14 +99,6 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
         )
     ) { grantedPermissions ->
         viewModel.onHealthPermissionResult(grantedPermissions.containsAll(ridePermissions))
-    }
-
-    val weightPermissionLauncher = rememberLauncherForActivityResult(
-        contract = PermissionController.createRequestPermissionResultContract(
-            HEALTH_CONNECT_PROVIDER_PACKAGE
-        )
-    ) { grantedPermissions ->
-        viewModel.onWeightPermissionResult(grantedPermissions.containsAll(weightPermissions))
     }
 
     val currentSpeedMph = snapshot.currentSpeedMps * 2.23694
@@ -201,18 +187,6 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        OutlinedTextField(
-            value = uiState.weightInput,
-            onValueChange = { viewModel.updateWeight(it) },
-            label = { Text(stringResource(R.string.weight_label)) },
-            supportingText = { Text(stringResource(R.string.weight_supporting)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = stringResource(R.string.hrm_section_title),
@@ -315,76 +289,6 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
             }
         }
 
-        // Manual HR section - only shown when HRM is NOT connected
-        AnimatedVisibility(visible = hrmState.connectionStatus != ConnectionStatus.Connected) {
-            Column {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.hr_section_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = stringResource(R.string.hr_section_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = uiState.ageInput,
-                        onValueChange = { viewModel.updateAge(it) },
-                        label = { Text(stringResource(R.string.age_label)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.heartRateInput,
-                        onValueChange = { viewModel.updateHeartRate(it) },
-                        label = { Text(stringResource(R.string.heart_rate_label)) },
-                        supportingText = { Text(stringResource(R.string.heart_rate_supporting)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.sex_label),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.alignByBaseline()
-                    )
-                    FilterChip(
-                        selected = uiState.sex == Sex.Male,
-                        onClick = {
-                            viewModel.updateSex(if (uiState.sex == Sex.Male) null else Sex.Male)
-                        },
-                        label = { Text(stringResource(R.string.sex_male)) }
-                    )
-                    FilterChip(
-                        selected = uiState.sex == Sex.Female,
-                        onClick = {
-                            viewModel.updateSex(if (uiState.sex == Sex.Female) null else Sex.Female)
-                        },
-                        label = { Text(stringResource(R.string.sex_female)) }
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
@@ -399,30 +303,6 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        uiState.weightStatus?.let { status ->
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = status,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    if (viewModel.healthExporter.availabilityStatus() ==
-                        androidx.health.connect.client.HealthConnectClient.SDK_AVAILABLE
-                    ) {
-                        weightPermissionLauncher.launch(weightPermissions)
-                    } else {
-                        viewModel.retryWeightLoad()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = stringResource(R.string.retry_weight_cta))
-            }
-        }
 
         uiState.healthSyncStatus?.let { status ->
             Spacer(modifier = Modifier.height(12.dp))

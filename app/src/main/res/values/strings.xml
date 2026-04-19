@@ -69,4 +69,6 @@
     <string name="hrm_bluetooth_off">Turn on Bluetooth to connect a heart rate monitor.</string>
     <string name="hrm_permission_needed">Bluetooth permission is required to connect a heart rate monitor.</string>
     <string name="hrm_section_title">Heart rate monitor</string>
+    <string name="drawer_settings_title">Settings</string>
+    <string name="drawer_menu_description">Open menu</string>
 </resources>

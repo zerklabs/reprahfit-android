@@ -99,15 +99,11 @@ class HeartRateMonitorManager(private val context: Context) {
             scanResults = emptyList()
         )
 
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(HR_SERVICE_UUID))
-            .build()
-
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
-        scanner?.startScan(listOf(filter), settings, scanCallback)
+        scanner?.startScan(null, settings, scanCallback)
         Log.d(TAG, "BLE scan started")
 
         val timeout = Runnable { stopScan() }

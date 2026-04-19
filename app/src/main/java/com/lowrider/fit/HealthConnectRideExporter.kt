@@ -6,6 +6,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Device
@@ -23,14 +24,16 @@ data class CompletedRide(
     val startEpochMillis: Long,
     val endEpochMillis: Long,
     val distanceMeters: Double,
-    val calories: Int
+    val calories: Int,
+    val averageHeartRate: Int = 0
 )
 
 class HealthConnectRideExporter(private val context: Context) {
     private val ridePermissions = setOf(
         HealthPermission.getWritePermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(DistanceRecord::class),
-        HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class)
+        HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
+        HealthPermission.getWritePermission(HeartRateRecord::class)
     )
     private val weightPermissions = setOf(
         HealthPermission.getReadPermission(WeightRecord::class)
@@ -63,39 +66,57 @@ class HealthConnectRideExporter(private val context: Context) {
         val endOffset = ZoneOffset.systemDefault().rules.getOffset(endTime)
         val metadata = Metadata.activelyRecorded(phoneDevice())
 
-        client().insertRecords(
-            listOf(
-                ExerciseSessionRecord(
+        val records = mutableListOf(
+            ExerciseSessionRecord(
+                startTime = startTime,
+                startZoneOffset = startOffset,
+                endTime = endTime,
+                endZoneOffset = endOffset,
+                metadata = metadata,
+                exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+                title = context.getString(R.string.health_connect_session_title),
+                notes = context.getString(
+                    R.string.health_connect_session_note,
+                    "%.2f".format(ride.distanceMeters / 1609.344)
+                )
+            ),
+            DistanceRecord(
+                startTime = startTime,
+                startZoneOffset = startOffset,
+                endTime = endTime,
+                endZoneOffset = endOffset,
+                distance = Length.meters(ride.distanceMeters),
+                metadata = metadata
+            ),
+            TotalCaloriesBurnedRecord(
+                startTime = startTime,
+                startZoneOffset = startOffset,
+                endTime = endTime,
+                endZoneOffset = endOffset,
+                energy = Energy.kilocalories(ride.calories.toDouble()),
+                metadata = metadata
+            )
+        )
+
+        if (ride.averageHeartRate > 0) {
+            records.add(
+                HeartRateRecord(
                     startTime = startTime,
                     startZoneOffset = startOffset,
                     endTime = endTime,
                     endZoneOffset = endOffset,
                     metadata = metadata,
-                    exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
-                    title = context.getString(R.string.health_connect_session_title),
-                    notes = context.getString(
-                        R.string.health_connect_session_note,
-                        "%.2f".format(ride.distanceMeters / 1609.344)
+                    samples = listOf(
+                        HeartRateRecord.Sample(
+                            time = startTime,
+                            beatsPerMinute = ride.averageHeartRate.toLong()
+                        )
                     )
-                ),
-                DistanceRecord(
-                    startTime = startTime,
-                    startZoneOffset = startOffset,
-                    endTime = endTime,
-                    endZoneOffset = endOffset,
-                    distance = Length.meters(ride.distanceMeters),
-                    metadata = metadata
-                ),
-                TotalCaloriesBurnedRecord(
-                    startTime = startTime,
-                    startZoneOffset = startOffset,
-                    endTime = endTime,
-                    endZoneOffset = endOffset,
-                    energy = Energy.kilocalories(ride.calories.toDouble()),
-                    metadata = metadata
                 )
             )
-        )
+        }
+
+        client().insertRecords(records)
     }
 
     suspend fun readLatestWeightPounds(): Double? {

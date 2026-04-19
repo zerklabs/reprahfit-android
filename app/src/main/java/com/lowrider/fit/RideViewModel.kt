@@ -32,6 +32,34 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     private val rideDao = AppDatabase.getInstance(context).rideDao()
     val rideHistory = rideDao.getAll()
 
+    private val hrmManager get() = HeartRateMonitorManager.getInstance(context)
+
+    val hrmState: StateFlow<HrmState> get() = hrmManager.state
+
+    fun startHrmScan() {
+        hrmManager.startScan()
+    }
+
+    fun stopHrmScan() {
+        hrmManager.stopScan()
+    }
+
+    fun connectHrmDevice(device: android.bluetooth.BluetoothDevice) {
+        hrmManager.connectToDevice(device)
+    }
+
+    fun disconnectHrm() {
+        hrmManager.disconnect()
+    }
+
+    fun isHrmBluetoothEnabled(): Boolean {
+        return hrmManager.isBluetoothEnabled()
+    }
+
+    fun hasHrmSavedDevice(): Boolean {
+        return hrmManager.hasSavedDevice()
+    }
+
     private val _uiState = MutableStateFlow(RideUiState())
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
 
@@ -78,11 +106,13 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         val elapsedHours = finalElapsedMillis / 3_600_000.0
         val distanceMiles = snapshot.distanceMeters / 1609.344
         val averageSpeedMph = if (elapsedHours > 0.0) distanceMiles / elapsedHours else 0.0
+        val liveAvgHr = snapshot.averageHeartRate
+        val effectiveHr = if (liveAvgHr > 0) liveAvgHr else currentState.heartRateInput.toIntOrNull()
         val calories = estimateOutdoorCalories(
             weightPounds = currentState.weightInput.toDoubleOrNull() ?: 0.0,
             hours = elapsedHours,
             averageSpeedMph = averageSpeedMph,
-            averageHeartRate = currentState.heartRateInput.toIntOrNull(),
+            averageHeartRate = effectiveHr,
             age = currentState.ageInput.toIntOrNull(),
             sex = currentState.sex
         )
@@ -91,7 +121,8 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             startEpochMillis = sessionStart,
             endEpochMillis = System.currentTimeMillis(),
             distanceMeters = snapshot.distanceMeters,
-            calories = calories
+            calories = calories,
+            averageHeartRate = snapshot.averageHeartRate
         )
 
         _uiState.value = currentState.copy(

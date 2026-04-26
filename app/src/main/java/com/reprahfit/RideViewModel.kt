@@ -77,6 +77,11 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         hrmManager.disconnect()
     }
 
+    fun switchHrmDevice() {
+        hrmManager.disconnect()
+        startHrmScan()
+    }
+
     fun isHrmBluetoothEnabled(): Boolean {
         return hrmManager.isBluetoothEnabled()
     }

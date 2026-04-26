@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -221,11 +222,33 @@ fun OutdoorRideScreen(viewModel: RideViewModel = viewModel()) {
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = { viewModel.disconnectHrm() },
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = stringResource(R.string.hrm_disconnect_cta))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.switchHrmDevice()
+                            showDevicePicker = true
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = stringResource(R.string.hrm_switch_cta),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.hrm_switch_cta),
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.disconnectHrm() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = stringResource(R.string.hrm_disconnect_cta))
+                    }
                 }
             }
             ConnectionStatus.Reconnecting -> {

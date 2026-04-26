@@ -62,7 +62,8 @@
     <string name="hrm_connected">%1$d bpm</string>
     <string name="hrm_device_label">%1$s</string>
     <string name="hrm_lost">HRM lost, reconnecting\u2026</string>
-    <string name="hrm_disconnect_cta">Disconnect HRM</string>
+    <string name="hrm_disconnect_cta">Disconnect</string>
+    <string name="hrm_switch_cta">Switch</string>
     <string name="hrm_stop_scan_cta">Stop Scanning</string>
     <string name="hrm_unknown_device">Unknown HRM</string>
     <string name="hrm_no_devices">No heart rate monitors found.</string>

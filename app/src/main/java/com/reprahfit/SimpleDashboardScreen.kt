@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -180,8 +181,21 @@ fun SimpleDashboardScreen(viewModel: RideViewModel = viewModel()) {
                         color = Color.Red
                     )
                 }
-                TextButton(onClick = { viewModel.disconnectHrm() }) {
-                    Text(text = stringResource(R.string.hrm_disconnect_cta))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { viewModel.switchHrmDevice() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.hrm_switch_cta),
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                    TextButton(onClick = { viewModel.disconnectHrm() }) {
+                        Text(text = stringResource(R.string.hrm_disconnect_cta))
+                    }
                 }
             }
             ConnectionStatus.Reconnecting -> {

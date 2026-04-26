@@ -83,9 +83,52 @@ Build outputs are in `app/build/outputs/apk/`.
 
 ## Device Setup
 
-1. Enable Developer Options: Settings > About phone > tap "Build number" 7 times
-2. Enable USB Debugging: Settings > Developer options > USB debugging
-3. Connect via USB and authorize the computer when prompted
+### Enable Developer Mode
+
+1. Go to Settings > About phone
+2. Tap "Build number" 7 times until "You are now a developer" appears
+3. Go to Settings > Developer options
+4. Enable "USB debugging"
+
+### Connect via USB
+
+**Linux:**
+```bash
+# Install ADB if not using Android Studio
+sudo apt install adb
+
+# Add udev rules for your device (one-time setup)
+sudo usermod -aG plugdev $USER
+# Log out and back in for group change to take effect
+```
+
+**Windows:**
+- ADB included with Android Studio, or download [Platform Tools](https://developer.android.com/tools/releases/platform-tools)
+- Install USB driver from your phone manufacturer (Samsung, Google, etc.)
+
+**macOS:**
+```bash
+brew install android-platform-tools
+```
+
+### Verify Connection
+
+```bash
+# List connected devices
+adb devices
+
+# Should show your device with "device" status:
+# List of devices attached
+# XXXXXXXX    device
+```
+
+If device shows "unauthorized", check your phone for the USB debugging authorization prompt and tap "Allow".
+
+### Troubleshooting
+
+- **No device listed**: Try different USB cable (data cables, not charge-only)
+- **"unauthorized"**: Revoke USB debugging authorizations in Developer options, reconnect
+- **Linux permission denied**: Ensure udev rules are set and you're in `plugdev` group
 
 ## Features
 
